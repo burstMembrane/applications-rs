@@ -1,6 +1,8 @@
-# apps-rs
+# applications-rs
 
-> This crate is used to
+[![Crates.io Version](https://img.shields.io/crates/v/applications)](https://crates.io/crates/applications)
+
+> This crate is created for project [kunkun](https://github.com/kunkunsh/kunkun) to
 >
 > - get a list of installed applications on the system
 > - get the frontmost application
@@ -9,8 +11,14 @@
 ## Platforms
 
 - [x] Mac
-- [ ] Linux
-- [ ] Windows
+- [x] Linux
+- [x] Windows
+
+> [!WARNING]
+> Linux and Windows support don't have full support yet. e.g. `get_running_apps()` only works on Mac.
+> This crate will be maintained and improved as development of [kunkun](https://github.com/kunkunsh/kunkun) progress
+
+
 
 ## Usage
 
@@ -55,8 +63,8 @@ Apple silicon macs can now run iOS apps. iOS app icons are in `.png` format.
 
 ### Windows
 
-https://crates.io/crates/winreg could be useful. Ask chatgpt for sample code.
+https://crates.io/crates/winreg could be useful.
 
 ## Libraries
 
-- https://crates.io/crates/icns: Read and write icns files, convert into PNG format.
+- https://crates.io/crates/icns: Read and write Mac icns files, convert into PNG format.
