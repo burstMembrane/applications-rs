@@ -89,8 +89,12 @@ pub fn open_file_with(file_path: PathBuf, app: App) {
     let file_path_str = file_path.to_str().unwrap();
     let output = std::process::Command::new(exec_path_str)
         .arg(file_path_str)
-        .output()
-        .expect("failed to execute process");
+        .output();
+    // match output
+    match output {
+        Ok(_) => println!("File opened successfully"),
+        Err(e) => println!("Error opening file: {}", e),
+    }
 }
 
 // match app name using either app name or .desktop file name
@@ -99,10 +103,9 @@ fn match_app_name(app: &App, app_name: &str) -> bool {
         || app_name.to_lowercase() == app.name.to_lowercase()
         || app
             .app_desktop_path
-            .file_name()
-            .unwrap()
+            .file_stem()
+            .unwrap_or("".as_ref())
             .to_string_lossy()
-            .replace(".desktop", "")
             == *app_name.to_lowercase()
 }
 pub fn get_running_apps() -> Result<Vec<App>> {
