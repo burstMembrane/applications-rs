@@ -1,12 +1,22 @@
 use crate::common::{App, AppInfo, AppInfoContext};
-use crate::prelude::*;
+
+use regex::Regex;
+use std::io;
+use std::process::Command;
+
+use anyhow::Error;
+use anyhow::Result;
 use ini::ini;
+
 use std::collections::HashSet;
 use std::path::PathBuf;
 use walkdir::WalkDir;
-
 pub fn parse_desktop_file(desktop_file_path: PathBuf) -> App {
     let mut app = App::default();
+
+    if desktop_file_path.is_dir() {
+        return app;
+    }
     app.app_desktop_path = desktop_file_path.clone();
     let desktop_file_path_str = desktop_file_path.to_str().unwrap();
     let map = ini!(desktop_file_path_str);
@@ -44,6 +54,7 @@ pub fn get_all_apps() -> Result<Vec<App>> {
     search_dirs.insert("/usr/share/xsessions");
     search_dirs.insert("/etc/xdg/autostart");
     search_dirs.insert("/var/lib/snapd/desktop/applications");
+
     // for each dir, search for .desktop files
     let mut apps: Vec<App> = Vec::new();
     for dir in search_dirs {
@@ -80,8 +91,84 @@ pub fn open_file_with(file_path: PathBuf, app: App) {
         .expect("failed to execute process");
 }
 
-pub fn get_running_apps() -> Vec<App> {
-    todo!()
+fn match_app_name(app: &App, app_name: &str) -> bool {
+    app.name == *app_name
+        || app_name.to_lowercase() == app.name.to_lowercase()
+        || app
+            .app_desktop_path
+            .to_str()
+            .unwrap()
+            .split('/')
+            .last()
+            .unwrap()
+            .replace(".desktop", "")
+            == *app_name.to_lowercase()
+}
+pub fn get_running_apps() -> Result<Vec<App>> {
+    let mut applications = Vec::new();
+
+    // Run `wmctrl -l` to list all open windows
+    let wmctrl_output = Command::new("wmctrl").arg("-l").output()?;
+    dbg!(&wmctrl_output);
+    if !wmctrl_output.status.success() {
+        return Err(io::Error::from(io::ErrorKind::Other).into());
+    }
+
+    let wmctrl_stdout = String::from_utf8_lossy(&wmctrl_output.stdout);
+    dbg!(&wmctrl_stdout);
+    // Regular expression to extract strings within double quotes
+    let re = Regex::new(r#""([^"]*)""#).unwrap();
+
+    // Iterate over each window ID
+    for line in wmctrl_stdout.lines() {
+        let win_id = line.split_whitespace().next().unwrap_or_default();
+
+        // Check if the window is a normal window
+        let xprop_output = Command::new("xprop")
+            .args(&["-id", win_id, "_NET_WM_WINDOW_TYPE"])
+            .output()?;
+
+        if !xprop_output.status.success() {
+            continue;
+        }
+
+        let xprop_stdout = String::from_utf8_lossy(&xprop_output.stdout);
+        if xprop_stdout.contains("_NET_WM_WINDOW_TYPE_NORMAL") {
+            // Get the application name from WM_CLASS property
+            let class_output = Command::new("xprop")
+                .args(&["-id", win_id, "WM_CLASS"])
+                .output()?;
+
+            if !class_output.status.success() {
+                continue;
+            }
+
+            let class_stdout = String::from_utf8_lossy(&class_output.stdout);
+            let captures: Vec<_> = re.captures_iter(&class_stdout).collect();
+
+            if let Some(capture) = captures.get(1) {
+                let appname = &capture[1];
+                applications.push(appname.to_string());
+            }
+        }
+    }
+
+    // Sort and remove duplicates
+    applications.sort();
+    applications.dedup();
+
+    dbg!(&applications);
+
+    // get all the apps on the system
+    let apps = get_all_apps()?;
+
+    let running_apps: Vec<App> = applications
+        .iter()
+        .filter_map(|app_name| apps.iter().find(|app| match_app_name(app, app_name)))
+        .cloned()
+        .collect();
+
+    Ok(running_apps)
 }
 
 /// TODO: this is not working yet, xprop gives the current app name, but we need to locate its .desktop file if possible
@@ -95,6 +182,7 @@ pub fn get_frontmost_application() -> Result<App> {
 
     let output = std::str::from_utf8(&output.stdout).unwrap();
     let id = output.split_whitespace().last().unwrap();
+    dbg!(id);
 
     let output = std::process::Command::new("xprop")
         .arg("-id")
@@ -104,20 +192,25 @@ pub fn get_frontmost_application() -> Result<App> {
         .expect("failed to execute process");
 
     let output = std::str::from_utf8(&output.stdout).unwrap();
-    let app_name = output.split('"').nth(1).unwrap();
 
+    let app_name = output.split('"').nth(1).unwrap();
+    dbg!(app_name);
     let apps = get_all_apps()?;
+
     for app in apps {
-        if app.name == app_name {
+        if match_app_name(&app, app_name) {
             return Ok(app);
         }
     }
 
-    Err(Error::Generic("No matching app found".into()))
+    Err(Error::msg(
+        "Failed to find frontmost application. Maybe it's not a .desktop app?",
+    ))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
     use std::path::PathBuf;
     use std::process::Command;
     use std::str;
@@ -139,23 +232,18 @@ mod tests {
 
     #[test]
     fn test_parse_desktop_file() {
-        let app = parse_desktop_file(PathBuf::from(
-            "/var/lib/snapd/desktop/applications/gitkraken_gitkraken.desktop",
-        ));
+        // let applications path
+
+        let output = Path::new("/usr/share/applications/")
+            .read_dir()
+            // get the first .desktop file
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.path().extension().unwrap() == "desktop")
+            .next()
+            .unwrap()
+            .path();
+        let app = parse_desktop_file(output);
         println!("App: {:#?}", app);
     }
-
-    // #[test]
-    // fn ios_app() {
-    //     let path = PathBuf::from("/Applications/Surge.app");
-    //     let found = find_ios_app_icon(path);
-    //     println!("Found: {:?}", found);
-    // }
-
-    // #[test]
-    // fn open_file_with_vscode() {
-    //     let file_path = PathBuf::from("/home/huakun/Desktop/CCC");
-    //     let app_path = PathBuf::from("code");
-    //     open_file_with(file_path, app_path);
-    // }
 }

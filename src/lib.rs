@@ -4,15 +4,18 @@
 //! # Examples
 //!
 //! ```rust
-//! let mut ctx = crate::common::AppInfoContext::new();
-//! ctx.refresh_apps().unwrap();        // this will block the thread
+//! use applications::{AppInfoContext, AppInfo};
+//! let mut ctx = AppInfoContext::new();
+//! ctx.refresh_apps().unwrap(); // must refresh apps before getting them
+
 //! let apps = ctx.get_all_apps();
+//!
 //! assert!(apps.len() > 0);
 //! ```
 //!
 //! ```rust
 //! use applications::{AppInfoContext, AppInfo};
-//! 
+//!
 //! fn main() {
 //!     let mut ctx = AppInfoContext::new();
 //!     ctx.refresh_apps().unwrap(); // must refresh apps before getting them
