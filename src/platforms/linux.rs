@@ -1,4 +1,4 @@
-use crate::common::{App, AppInfo, AppInfoContext};
+use crate::common::App;
 
 use regex::Regex;
 use std::io;
@@ -45,12 +45,14 @@ pub fn get_all_apps() -> Result<Vec<App>> {
     let xdg_data_dirs: Vec<&str> = xdg_data_dirs.split(':').collect();
     // make a string sett from xdg_data_dirs
     let mut search_dirs: HashSet<&str> = xdg_data_dirs.iter().cloned().collect();
-    search_dirs.insert("/usr/share/applications");
+
     // get home dir of current user
     let home_dir = std::env::var("HOME").unwrap();
     let home_path = PathBuf::from(home_dir);
     let local_share_apps = home_path.join(".local/share/applications");
+
     search_dirs.insert(local_share_apps.to_str().unwrap());
+    search_dirs.insert("/usr/share/applications");
     search_dirs.insert("/usr/share/xsessions");
     search_dirs.insert("/etc/xdg/autostart");
     search_dirs.insert("/var/lib/snapd/desktop/applications");
@@ -212,8 +214,6 @@ pub fn get_frontmost_application() -> Result<App> {
 mod tests {
     use std::path::Path;
     use std::path::PathBuf;
-    use std::process::Command;
-    use std::str;
 
     use super::*;
 
