@@ -93,16 +93,15 @@ pub fn open_file_with(file_path: PathBuf, app: App) {
         .expect("failed to execute process");
 }
 
+// match app name using either app name or .desktop file name
 fn match_app_name(app: &App, app_name: &str) -> bool {
     app.name == *app_name
         || app_name.to_lowercase() == app.name.to_lowercase()
         || app
             .app_desktop_path
-            .to_str()
+            .file_name()
             .unwrap()
-            .split('/')
-            .last()
-            .unwrap()
+            .to_string_lossy()
             .replace(".desktop", "")
             == *app_name.to_lowercase()
 }
@@ -111,13 +110,13 @@ pub fn get_running_apps() -> Result<Vec<App>> {
 
     // Run `wmctrl -l` to list all open windows
     let wmctrl_output = Command::new("wmctrl").arg("-l").output()?;
-    dbg!(&wmctrl_output);
+
     if !wmctrl_output.status.success() {
         return Err(io::Error::from(io::ErrorKind::Other).into());
     }
 
     let wmctrl_stdout = String::from_utf8_lossy(&wmctrl_output.stdout);
-    dbg!(&wmctrl_stdout);
+
     // Regular expression to extract strings within double quotes
     let re = Regex::new(r#""([^"]*)""#).unwrap();
 
@@ -159,8 +158,6 @@ pub fn get_running_apps() -> Result<Vec<App>> {
     applications.sort();
     applications.dedup();
 
-    dbg!(&applications);
-
     // get all the apps on the system
     let apps = get_all_apps()?;
 
@@ -184,7 +181,6 @@ pub fn get_frontmost_application() -> Result<App> {
 
     let output = std::str::from_utf8(&output.stdout).unwrap();
     let id = output.split_whitespace().last().unwrap();
-    dbg!(id);
 
     let output = std::process::Command::new("xprop")
         .arg("-id")
@@ -196,7 +192,7 @@ pub fn get_frontmost_application() -> Result<App> {
     let output = std::str::from_utf8(&output.stdout).unwrap();
 
     let app_name = output.split('"').nth(1).unwrap();
-    dbg!(app_name);
+
     let apps = get_all_apps()?;
 
     for app in apps {
