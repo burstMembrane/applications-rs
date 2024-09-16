@@ -1,11 +1,11 @@
 //! Common Data Structures
 use crate::utils::image::RustImageData;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc, Mutex},
 };
-use anyhow::Result;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct App {
@@ -24,10 +24,11 @@ pub trait AppInfo {
     /// It could take a few seconds to retrieve all apps, so a cache needs to be maintained
     /// This method is used to refresh the cache
     fn refresh_apps(&mut self) -> Result<()>;
-    fn get_all_apps(&self) -> Vec<App>;
+    fn get_all_apps(&mut self) -> Vec<App>;
     fn open_file_with(&self, file_path: PathBuf, app: App);
-    fn get_running_apps(&self) -> Vec<App>;
-    fn get_frontmost_application(&self) -> Result<App>;
+    fn get_running_apps(&mut self) -> Vec<App>;
+    fn refresh_if_needed(&mut self) -> Result<()>;
+    fn get_frontmost_application(&mut self) -> Result<App>;
     fn is_refreshing(&self) -> bool;
     fn empty_cache(&mut self);
 }

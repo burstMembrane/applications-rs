@@ -108,7 +108,7 @@ fn match_app_name(app: &App, app_name: &str) -> bool {
             .to_string_lossy()
             == *app_name.to_lowercase()
 }
-pub fn get_running_apps() -> Result<Vec<App>> {
+pub fn get_running_apps(apps: &Vec<App>) -> Result<Vec<App>> {
     let mut applications = Vec::new();
 
     // Run `wmctrl -l` to list all open windows
@@ -161,9 +161,6 @@ pub fn get_running_apps() -> Result<Vec<App>> {
     applications.sort();
     applications.dedup();
 
-    // get all the apps on the system
-    let apps = get_all_apps()?;
-
     let running_apps: Vec<App> = applications
         .iter()
         .filter_map(|app_name| apps.iter().find(|app| match_app_name(app, app_name)))
@@ -173,9 +170,8 @@ pub fn get_running_apps() -> Result<Vec<App>> {
     Ok(running_apps)
 }
 
-/// TODO: this is not working yet, xprop gives the current app name, but we need to locate its .desktop file if possible
 /// If I need to compare app name with app apps, then this function should be moved to AppInfoContext where there is a `cached_apps`
-pub fn get_frontmost_application() -> Result<App> {
+pub fn get_frontmost_application(apps: &Vec<App>) -> Result<App> {
     let output = std::process::Command::new("xprop")
         .arg("-root")
         .arg("_NET_ACTIVE_WINDOW")
@@ -196,11 +192,9 @@ pub fn get_frontmost_application() -> Result<App> {
 
     let app_name = output.split('"').nth(1).unwrap();
 
-    let apps = get_all_apps()?;
-
     for app in apps {
         if match_app_name(&app, app_name) {
-            return Ok(app);
+            return Ok(app.clone());
         }
     }
 
@@ -212,7 +206,6 @@ pub fn get_frontmost_application() -> Result<App> {
 #[cfg(test)]
 mod tests {
     use std::path::Path;
-    use std::path::PathBuf;
 
     use super::*;
 

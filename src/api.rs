@@ -39,7 +39,8 @@ impl AppInfo for AppInfoContext {
         Ok(())
     }
 
-    fn get_all_apps(&self) -> Vec<App> {
+    fn get_all_apps(&mut self) -> Vec<App> {
+        self.refresh_if_needed().unwrap();
         self.cached_apps.lock().unwrap().clone()
     }
 
@@ -47,12 +48,20 @@ impl AppInfo for AppInfoContext {
         open_file_with(file_path, app)
     }
 
-    fn get_running_apps(&self) -> Vec<App> {
-        get_running_apps().unwrap_or_default()
+    fn refresh_if_needed(&mut self) -> Result<()> {
+        if self.cached_apps.lock().unwrap().is_empty() {
+            self.refresh_apps()?;
+        }
+        Ok(())
+    }
+    fn get_running_apps(&mut self) -> Vec<App> {
+        self.refresh_if_needed().unwrap();
+        get_running_apps(&self.cached_apps.lock().unwrap()).unwrap_or_default()
     }
 
-    fn get_frontmost_application(&self) -> Result<App> {
-        get_frontmost_application()
+    fn get_frontmost_application(&mut self) -> Result<App> {
+        self.refresh_if_needed().unwrap();
+        get_frontmost_application(&self.cached_apps.lock().unwrap())
     }
 
     fn is_refreshing(&self) -> bool {
