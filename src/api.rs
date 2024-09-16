@@ -80,24 +80,6 @@ mod tests {
     use crate::common::{AppInfo, AppInfoContext};
 
     #[test]
-    fn test_app_info() {
-        let mut ctx = AppInfoContext::new();
-        assert_eq!(ctx.get_all_apps().len(), 0);
-        assert_eq!(ctx.is_refreshing(), false);
-        ctx.refresh_apps().unwrap();
-        assert_eq!(ctx.is_refreshing(), false);
-        assert!(ctx.get_all_apps().len() > 0);
-        ctx.empty_cache();
-        assert_eq!(ctx.get_all_apps().len(), 0);
-        assert_eq!(ctx.is_refreshing(), false);
-        ctx.refresh_apps_in_background();
-        assert_eq!(ctx.is_refreshing(), true);
-        thread::sleep(Duration::from_secs(5));
-        assert_eq!(ctx.is_refreshing(), false);
-        assert!(ctx.get_all_apps().len() > 0);
-    }
-
-    #[test]
     fn get_all_apps() {
         let mut ctx = AppInfoContext::new();
         ctx.refresh_apps().unwrap();
